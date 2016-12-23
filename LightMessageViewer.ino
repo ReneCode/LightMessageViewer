@@ -4,7 +4,9 @@
 #include "private_data.h"
 
 #define PIXEL_PIN   D2
-#define NUMPIXELS   16
+
+const int SIZE_PIXELS  = 4;
+const int COUNT_PIXELS = SIZE_PIXELS * SIZE_PIXELS;
 
 // enter here the url from the Service
 const char* LIGHT_MESSAGE_URL = LIGHT_MESSAGE_SERVICE;
@@ -17,13 +19,13 @@ char g_CharArray[MAX_JSON_SIZE];
 
 
 
-Adafruit_NeoPixel pixels = Adafruit_NeoPixel(NUMPIXELS, PIXEL_PIN, NEO_GRB + NEO_KHZ800);
+Adafruit_NeoPixel pixels = Adafruit_NeoPixel(COUNT_PIXELS, PIXEL_PIN, NEO_GRB + NEO_KHZ800);
 
 
 
 void clearLeds() {
   uint32_t offColor = pixels.Color(0,0,0);
-  for (int i=0; i<NUMPIXELS; i++) {
+  for (int i=0; i<COUNT_PIXELS; i++) {
     pixels.setPixelColor(i, offColor);
   }
   pixels.show();
@@ -87,10 +89,24 @@ bool fillLedArray(JsonObject &jObj, uint32_t *ledArray) {
   }
 }
 
+void swapLeds(uint32_t *leds, int idx1, int idx2) {
+  uint32_t tmp = leds[idx1];
+  leds[idx1] = leds[idx2];
+  leds[idx2] = tmp;
+}
 
+void flipLeds(uint32_t *leds) {
+  for (int y=1; y<SIZE_PIXELS; y+=2) {
+    for (int x=0; x<SIZE_PIXELS/2; x++) {
+      int idx1 = y*SIZE_PIXELS + x;
+      int idx2 = (y+1)*SIZE_PIXELS -1 - x;
+      swapLeds(leds, idx1, idx2);
+    }
+  }
+}
 
 void showLeds(uint32_t *leds) {
-  for (int i=0; i<NUMPIXELS; i++) {
+  for (int i=0; i<COUNT_PIXELS; i++) {
     pixels.setPixelColor(i, *leds );
     leds++;
     pixels.show();
@@ -112,6 +128,7 @@ void work() {
             JsonObject& obj = root[0];     
             uint32_t leds[100];
             fillLedArray(obj, leds);   
+            flipLeds(leds);
             showLeds(leds);            
           }
         }
