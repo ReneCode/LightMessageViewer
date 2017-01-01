@@ -138,7 +138,7 @@ void showFrames() {
     for (int i=0; i<g_nCountFrames; i++) {
       uint32_t *leds = g_LedFrames[i];
       showLeds(leds);  
-      delay(150);    
+      delay(120);    
     }
   }
 }
