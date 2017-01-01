@@ -125,10 +125,10 @@ void work() {
         if (obj.success()) {
           uint32_t leds[100];
           fillLedArray(obj, leds);   
-          Serial.println("output");
+//          Serial.println("output");
           
-//          flipLeds(leds);
-//          showLeds(leds);            
+          flipLeds(leds);
+          showLeds(leds);            
         }
       }
 
