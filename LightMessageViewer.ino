@@ -14,10 +14,23 @@ const char* LIGHT_MESSAGE_URL = LIGHT_MESSAGE_SERVICE;
 const int MAX_JSON_SIZE = 10000;
 char g_aChar[MAX_JSON_SIZE];
 
-
+const int MAX_FRAMES = 100;
+int   g_nCountFrames = 0;
+uint32_t* g_LedFrames[MAX_FRAMES];
+uint32_t g_Leds[MAX_FRAMES * COUNT_PIXELS];
+bool g_bShowFrames = false;
 
 Adafruit_NeoPixel pixels = Adafruit_NeoPixel(COUNT_PIXELS, PIXEL_PIN, NEO_GRB + NEO_KHZ800);
 
+
+void initFrameArray() {
+  g_nCountFrames = 0;
+  uint32_t *ptr = g_Leds;
+  for (int i=0; i<MAX_FRAMES; i++) {
+     g_LedFrames[i] = ptr;
+     ptr += COUNT_PIXELS;
+  }
+}
 
 
 void clearLeds() {
@@ -72,19 +85,25 @@ uint32_t convertToPixelColor(const char *color) {
   return pCol;
 }
 
-bool fillLedArray(JsonObject &jObj, uint32_t *ledArray) {
+bool fillLedArray(JsonObject &jObj) {
   JsonArray &frames = jObj["frames"];
   Serial.println(frames.size());
-  if (frames.size() > 0) {
-    JsonObject &frame = frames[0];
+  g_nCountFrames = 0;
+  for (int i=0; i<frames.size(); i++) {
+    JsonObject &frame = frames[i];
     JsonArray &leds = frame["leds"];
-    for (auto &pos : leds) {
-      const char* value = pos.asString();
-      uint32_t color = convertToPixelColor(value);
-      *ledArray = color;
-      ledArray++;    
+    if (leds.size() <= COUNT_PIXELS) {
+      uint32_t *pLeds = g_LedFrames[i];
+      for (auto &pos : leds) {
+        const char* value = pos.asString();
+        uint32_t color = convertToPixelColor(value);
+        *pLeds = color;
+        pLeds++;  
+      }  
+      flipLeds(g_LedFrames[i]);
     }
   }
+  g_nCountFrames = frames.size();
 }
 
 void swapLeds(uint32_t *leds, int idx1, int idx2) {
@@ -113,34 +132,39 @@ void showLeds(uint32_t *leds) {
 }
 
 
+void showFrames() {
+  int rounds = 10;
+  while (rounds-- > 0) {
+    for (int i=0; i<g_nCountFrames; i++) {
+      uint32_t *leds = g_LedFrames[i];
+      showLeds(leds);  
+      delay(150);    
+    }
+  }
+}
+
 void work() {
+  g_bShowFrames = false;
   if (WifiConnect()) {
     String sResult; 
     if (WifiGet(LIGHT_MESSAGE_URL, sResult)) {
       WifiDisconnect();
       if (fillCharArray(sResult, g_aChar, sizeof(g_aChar)) ) {
-//        Serial.println(g_CharArray);
         StaticJsonBuffer<MAX_JSON_SIZE> jsonBuffer;
         JsonObject& obj = jsonBuffer.parseObject(g_aChar);
         if (obj.success()) {
-          uint32_t leds[100];
-          fillLedArray(obj, leds);   
-//          Serial.println("output");
-          
-          flipLeds(leds);
-          showLeds(leds);            
+          fillLedArray(obj);   
         }
       }
-
-   
     }
-
-    
   }
   else {
     Serial.println("can't connect wifi");
   }
   WifiDisconnect();
+
+  g_bShowFrames = true;
+  showFrames();
 }
 
 
@@ -150,6 +174,7 @@ void setup() {
   
   pixels.begin();
   clearLeds();
+  initFrameArray();
 }
 
 
@@ -159,6 +184,6 @@ void loop() {
   work();
 
   // wait 60 seconds
-  delay(10 * 1000);
+//  delay(10 * 1000);
   
 }
