@@ -11,11 +11,8 @@ const int COUNT_PIXELS = SIZE_PIXELS * SIZE_PIXELS;
 // enter here the url from the Service
 const char* LIGHT_MESSAGE_URL = LIGHT_MESSAGE_SERVICE;
 
-const int MAX_JSON_SIZE = 6000;
-
-String g_String;    
-char g_CharArray[MAX_JSON_SIZE];
-
+const int MAX_JSON_SIZE = 10000;
+char g_aChar[MAX_JSON_SIZE];
 
 
 
@@ -32,11 +29,11 @@ void clearLeds() {
 }
 
 
-bool fillCharArray(const String &str) {
+bool fillCharArray(const String &str, char *aChar, int aCharLength) {
   bool ret = false;
   int strLength = str.length() + 1;
-  if (strLength <= sizeof(g_CharArray) ) {
-    str.toCharArray(g_CharArray, strLength);
+  if (strLength <= aCharLength ) {
+    str.toCharArray(aChar, strLength);
     ret = true;
   }
   return ret;
@@ -77,6 +74,7 @@ uint32_t convertToPixelColor(const char *color) {
 
 bool fillLedArray(JsonObject &jObj, uint32_t *ledArray) {
   JsonArray &frames = jObj["frames"];
+  Serial.println(frames.size());
   if (frames.size() > 0) {
     JsonObject &frame = frames[0];
     JsonArray &leds = frame["leds"];
@@ -117,20 +115,20 @@ void showLeds(uint32_t *leds) {
 
 void work() {
   if (WifiConnect()) {
-    if (WifiGet(LIGHT_MESSAGE_URL, g_String)) {
+    String sResult; 
+    if (WifiGet(LIGHT_MESSAGE_URL, sResult)) {
       WifiDisconnect();
-      if (fillCharArray(g_String) ) {
+      if (fillCharArray(sResult, g_aChar, sizeof(g_aChar)) ) {
 //        Serial.println(g_CharArray);
         StaticJsonBuffer<MAX_JSON_SIZE> jsonBuffer;
-        JsonArray& root = jsonBuffer.parseArray(g_CharArray);
-        if (root.success()) {
-          if (root.size() > 0) {
-            JsonObject& obj = root[0];     
-            uint32_t leds[100];
-            fillLedArray(obj, leds);   
-            flipLeds(leds);
-            showLeds(leds);            
-          }
+        JsonObject& obj = jsonBuffer.parseObject(g_aChar);
+        if (obj.success()) {
+          uint32_t leds[100];
+          fillLedArray(obj, leds);   
+          Serial.println("output");
+          
+//          flipLeds(leds);
+//          showLeds(leds);            
         }
       }
 
